@@ -82,16 +82,24 @@ class BAKH(datasets.imdb):
         assert os.path.exists(label_path), \
                 'Path does not exist: {}'.format(label_path)
         return label_path
-    # DO SOMETHING FOR SCENE LABEL HERE
+    # DO SOMETHING FOR SCENE LABEL HERE (DONE)
+    def scene_label_path_at(self, i):
+        """
+        Return the absolute path to metadata i in the image sequence.
+        """
+        return self.scene_label_path_from_index(self.image_index[i])
+
+    def scene_label_path_from_index(self, index):
+        """
+        Construct an metadata path from the image's "index" identifier.
+        """
+
+        label_path = os.path.join(self._data_path, index + '_scenelabel' + 'txt')
+        assert os.path.exists(label_path), \
+                'Path does not exist: {}'.format(label_path)
+        return label_path
     
-    
-    
-    
-    
-    
-    
-    
-    
+
     
     # camera pose
     def metadata_path_at(self, i):
@@ -165,7 +173,7 @@ class BAKH(datasets.imdb):
 
         # label path
         label_path = self.label_path_from_index(index)
-
+        scene_label_path=self.scene_label_path_from_index(index)##ME
         # metadata path
         metadata_path = self.metadata_path_from_index(index)
 
@@ -176,6 +184,7 @@ class BAKH(datasets.imdb):
         return {'image': image_path,
                 'depth': depth_path,
                 'label': label_path,
+                'scene_label':scene_label_path, # ME
                 'meta_data': metadata_path,
                 'video_id': video_id,
                 'class_colors': self._class_colors,
