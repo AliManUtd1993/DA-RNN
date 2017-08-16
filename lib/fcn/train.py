@@ -53,6 +53,15 @@ class SolverWrapper(object):
         self.saver.save(sess, filename)
         print 'Wrote snapshot to: {:s}'.format(filename)
 
+    RANDOM_SEED = 42##########################
+    tf.set_random_seed(RANDOM_SEED)######################
+
+
+    def init_weights(shape):#######################
+        """ Weight initialization """#########################
+        weights = tf.random_normal(shape, stddev=0.1)##################
+        return tf.Variable(weights)########################
+
 
     def train_model(self, sess, train_op, loss, learning_rate, max_iters):
         """Network training loop."""
@@ -77,7 +86,7 @@ class SolverWrapper(object):
             summary, loss_value, lr, _ = sess.run([merged, loss, learning_rate, train_op])
             train_writer.add_summary(summary, iter)
             timer.toc()
-            
+
             print 'iter: %d / %d, loss: %.4f, lr: %.8f, time: %.2f' %\
                     (iter+1, max_iters, loss_value, lr, timer.diff)
 
@@ -91,6 +100,21 @@ class SolverWrapper(object):
         if last_snapshot_iter != iter:
             self.snapshot(sess, iter)
 
+        theLayerWeWant = self.net.layers['score_conv5'] ###################
+        theLayerWeWant_rs=tf.image.resize_images(theLayerWeWant,[8,8])
+        theLayerWeWant_f=tf.contrib.layers.flatten(theLayerWeWant_rs)
+        x_size=theLayerWeWant_f.shape[1]
+        w_1 = init_weights((x_size, 3))     ####################    3: number of scence classes
+        scene_score = tf.matmul(theLayerWeWant_rs, w_1) ####################
+        predict_scene = tf.argmax(scene_score, axis=1)
+        y = tf.placeholder("float", shape=[None, y_size])
+
+        cost    = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=scene_score))
+        updates = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
+        for epoch in range(100):#we might want to change the number of iteration later 
+            # Train with each example
+            for i in range(len(train_X)):
+                sess.run(updates, feed_dict={X: train_X[i: i + 1], y: train_y[i: i + 1]})
 
     def train_model_vertex(self, sess, train_op, loss, loss_cls, loss_vertex, learning_rate, max_iters):
         """Network training loop."""
@@ -117,7 +141,7 @@ class SolverWrapper(object):
             summary, loss_value, loss_cls_value, loss_vertex_value, lr, _ = sess.run([merged, loss, loss_cls, loss_vertex, learning_rate, train_op])
             train_writer.add_summary(summary, iter)
             timer.toc()
-            
+
             print 'iter: %d / %d, loss: %.4f, loss_cls: %.4f, loss_vertex: %.4f, lr: %.8f, time: %.2f' %\
                     (iter+1, max_iters, loss_value, loss_cls_value, loss_vertex_value, lr, timer.diff)
 
@@ -239,7 +263,7 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
                 vertex_targets = network.get_output('vertex_targets')
                 vertex_weights = network.get_output('vertex_weights')
                 loss_vertex = tf.div( tf.reduce_sum(tf.multiply(vertex_weights, tf.abs(tf.subtract(vertex_pred, vertex_targets)))), tf.reduce_sum(vertex_weights) )
-                
+
                 loss = loss_cls + loss_vertex
             else:
                 scores = network.get_output('prob')
@@ -258,7 +282,7 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
                                            cfg.TRAIN.STEPSIZE, 0.1, staircase=True)
     momentum = cfg.TRAIN.MOMENTUM
     train_op = tf.train.MomentumOptimizer(learning_rate, momentum).minimize(loss, global_step=global_step)
-    
+
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         sw = SolverWrapper(sess, network, imdb, roidb, output_dir, pretrained_model=pretrained_model)
