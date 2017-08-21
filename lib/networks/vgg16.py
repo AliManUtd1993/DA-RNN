@@ -21,7 +21,7 @@ class vgg16(Network):
         self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units])
         self.points = tf.placeholder(tf.float32, [None, None, None, 3])
         self.keep_prob = tf.placeholder(tf.float32)
-
+        self.yolo=tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, 15])
         # define a queue
         if input_format == 'RGBD':
             q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
@@ -128,10 +128,15 @@ class vgg16(Network):
                  .add(name='add_score')
                  .deconv(int(16*self.scale), int(16*self.scale), self.num_units, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
 
+            (self.feed('upscore', 'fromYOLO').concat(3,name='concat_YOLO')
+             
+            
+            
+            
             (self.feed('state', 'weights', 'points', 'depth', 'meta_data')
                  .compute_flow(3, 0.02, 50, name='flow'))
 
-            (self.feed('upscore', 'flow')
+            (self.feed('concat_YOLO', 'flow')
                  .rnn_gru2d(self.num_units, self.num_units, name='gru2d', reuse=reuse)
                  .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units)
                  .log_softmax_high_dimension(self.num_classes, name='prob'))
