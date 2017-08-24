@@ -21,7 +21,7 @@ class vgg16(Network):
         self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units])
         self.points = tf.placeholder(tf.float32, [None, None, None, 3])
         self.keep_prob = tf.placeholder(tf.float32)
-        self.yolo=tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, 15])
+        self.yolo=tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes])
         # define a queue
         if input_format == 'RGBD':
             q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
