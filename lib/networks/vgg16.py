@@ -24,10 +24,10 @@ class vgg16(Network):
         self.yolo=tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes])
         # define a queue
         if input_format == 'RGBD':
-            q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
-            self.enqueue_op = q.enqueue([self.data, self.data_p, self.gt_label_2d, self.depth, self.meta_data, self.state, self.weights, self.points, self.keep_prob])
-            self.data_queue, self.data_p_queue, self.gt_label_2d_queue, self.depth_queue, self.meta_data_queue, self.state_queue, self.weights_queue, self.points_queue, self.keep_prob_queue = q.dequeue()
-            self.layers = dict({'data': [], 'data_p': [], 'gt_label_2d': [], 'depth': [], 'meta_data': [], 'state': [], 'weights': [], 'points': []})
+            q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
+            self.enqueue_op = q.enqueue([self.data, self.data_p, self.gt_label_2d, self.depth, self.meta_data, self.state, self.weights, self.points, self.keep_prob, self.yolo])
+            self.data_queue, self.data_p_queue, self.gt_label_2d_queue, self.depth_queue, self.meta_data_queue, self.state_queue, self.weights_queue, self.points_queue, self.keep_prob_queue,self.yolo_queue = q.dequeue()
+            self.layers = dict({'data': [], 'data_p': [], 'gt_label_2d': [], 'depth': [], 'meta_data': [], 'state': [], 'weights': [], 'points': [] ,'yolo':[]})
         else:
             q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
             self.enqueue_op = q.enqueue([self.data, self.gt_label_2d, self.depth, self.meta_data, self.state, self.weights, self.points, self.keep_prob])
@@ -48,6 +48,7 @@ class vgg16(Network):
         input_state = self.state_queue
         input_weights = self.weights_queue
         input_points = self.points_queue
+        input_yolo = self. yolo_queue
         outputs = []
         probs = []
         labels_gt_2d = []
@@ -64,6 +65,7 @@ class vgg16(Network):
             self.layers['state'] = input_state
             self.layers['weights'] = input_weights
             self.layers['points'] = input_points
+            self.layers['fromYOLO'] = input_yolo
             if i == 0:
                 reuse = None
             else:
@@ -128,7 +130,7 @@ class vgg16(Network):
                  .add(name='add_score')
                  .deconv(int(16*self.scale), int(16*self.scale), self.num_units, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
 
-            (self.feed('upscore', 'fromYOLO').concat(3,name='concat_YOLO')
+            (self.feed('upscore', 'fromYOLO').concat(3,name='concat_YOLO'))
              
             
             
