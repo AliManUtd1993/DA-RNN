@@ -164,7 +164,9 @@ class Network(object):
             if relu:
                 output = tf.nn.relu(output, name=scope.name)    
         return output
-
+    @layer
+    def resize(self, input, size):
+        return tf.resize(input,size)
     @layer
     def conv3d(self, input, k_d, k_h, k_w, c_i, c_o, s_d, s_h, s_w, name, reuse=None, relu=True, padding=DEFAULT_PADDING, trainable=True):
         self.validate_padding(padding)
