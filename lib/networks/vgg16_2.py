@@ -112,14 +112,12 @@ class vgg16(Network):
 
                 (self.feed('conv5_3', 'conv5_3_p')
                      .concat(3, name='concat_conv5')
-                     .conv(1, 1, self.num_units, 1, 1, name='score_conv5', reuse=reuse, c_i=1024))
-                (self.feed('score_conv5','fromYOLO')
-                     .concat(3,name='our_concat')
-                     .deconv(4, 4, self.num_units+self.num_classes, 2, 2, name='upscore_conv5', reuse=reuse, trainable=False))
+                     .conv(1, 1, self.num_units, 1, 1, name='score_conv5', reuse=reuse, c_i=1024)
+                     .deconv(4, 4, self.num_units, 2, 2, name='upscore_conv5', reuse=reuse, trainable=False))
 
                 (self.feed('conv4_3', 'conv4_3_p')
                      .concat(3, name='concat_conv4')
-                     .conv(1, 1, self.num_units+self.num_classes, 1, 1, name='score_conv4', reuse=reuse, c_i=1024))
+                     .conv(1, 1, self.num_units, 1, 1, name='score_conv4', reuse=reuse, c_i=1024))
             else:
                 (self.feed('conv5_3')
                      .conv(1, 1, self.num_units, 1, 1, name='score_conv5', reuse=reuse, c_i=512)
@@ -129,14 +127,16 @@ class vgg16(Network):
                      .conv(1, 1, self.num_units, 1, 1, name='score_conv4', reuse=reuse, c_i=512))
 
             (self.feed('score_conv4', 'upscore_conv5')
-                 .add(name='add_score')
-                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
+                 .add(name='add_score'))
+            (self.feed('add_score','fromYOLO)
+ +                     .concat(3,name='our_concat')
+                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes+5, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
 
             (self.feed('state', 'weights', 'points', 'depth', 'meta_data')
                  .compute_flow(3, 0.02, 50, name='flow'))
 
             (self.feed('upscore', 'flow')
-                 .rnn_gru2d(self.num_units, self.num_units+self.num_classes, name='gru2d', reuse=reuse)
+                 .rnn_gru2d(self.num_units, self.num_units+self.num_classes+5, name='gru2d', reuse=reuse)
                  .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units)
                  .log_softmax_high_dimension(self.num_classes, name='prob'))
             '''
