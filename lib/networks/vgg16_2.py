@@ -113,7 +113,7 @@ class vgg16(Network):
                 (self.feed('conv5_3', 'conv5_3_p')
                      .concat(3, name='concat_conv5')
                      .conv(1, 1, self.num_units, 1, 1, name='score_conv5', reuse=reuse, c_i=1024))
-                (self.feed('score_conv5','fromYOLO)
+                (self.feed('score_conv5','fromYOLO')
                      .concat(3,name='our_concat')
                      .deconv(4, 4, self.num_units+self.num_classes, 2, 2, name='upscore_conv5', reuse=reuse, trainable=False))
 
