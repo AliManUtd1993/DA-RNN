@@ -38,7 +38,7 @@ def parse_args():
                         default=None, type=str)
     parser.add_argument('--imdb', dest='imdb_name',
                         help='dataset to train on',
-                        default='shapenet_scene_train', type=str)
+                        default='merged_train', type=str)
     parser.add_argument('--rand', dest='randomize',
                         help='randomize (do not use a fixed seed)',
                         action='store_true')
