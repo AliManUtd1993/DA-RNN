@@ -21,7 +21,7 @@ class vgg16_2(Network):
         self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units])
         self.points = tf.placeholder(tf.float32, [None, None, None, 3])
         self.keep_prob = tf.placeholder(tf.float32)
-        self.yolo=tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes])
+        self.yolo = tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes])
         # define a queue
         if input_format == 'RGBD':
             q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
@@ -48,7 +48,7 @@ class vgg16_2(Network):
         input_state = self.state_queue
         input_weights = self.weights_queue
         input_points = self.points_queue
-        input_yolo = self. yolo_queue
+        input_yolo = self.yolo_queue
         outputs = []
         probs = []
         labels_gt_2d = []
@@ -130,13 +130,13 @@ class vgg16_2(Network):
                  .add(name='add_score'))
             (self.feed('add_score','fromYOLO)
  +                     .concat(3,name='our_concat')
-                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes+5, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
+                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes+4, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
 
             (self.feed('state', 'weights', 'points', 'depth', 'meta_data')
                  .compute_flow(3, 0.02, 50, name='flow'))
 
             (self.feed('upscore', 'flow')
-                 .rnn_gru2d(self.num_units, self.num_units+self.num_classes+5, name='gru2d', reuse=reuse)
+                 .rnn_gru2d(self.num_units, self.num_units+self.num_classes+4, name='gru2d', reuse=reuse)
                  .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units)
                  .log_softmax_high_dimension(self.num_classes, name='prob'))
             '''
