@@ -49,6 +49,12 @@ for split in ['train', 'val']:
     print name
     __sets[name] = (lambda split=split:
             datasets.lov(split))
+# our dataset
+for split in ['train', 'val']:
+    name = 'merged_{}'.format(split)
+    print name
+    __sets[name] = (lambda split=split:
+            datasets.merged(split))
 
 def get_imdb(name):
     """Get an imdb (image database) by name."""
