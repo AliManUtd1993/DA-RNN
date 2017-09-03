@@ -26,7 +26,7 @@ def get_minibatch(roidb, voxelizer):
 
     # Get the input image blob, formatted for tensorflow
     random_scale_ind = npr.randint(0, high=len(cfg.TRAIN.SCALES_BASE))
-    im_blob, im_depth_blob, im_normal_blob, im_scales = _get_image_blob(roidb, random_scale_ind)
+    im_blob, im_depth_blob, im_normal_blob, im_scales,yolo_blob = _get_image_blob(roidb, random_scale_ind)
 
     # build the label blob
     depth_blob, label_blob, meta_data_blob, state_blob, weights_blob, points_blob = _get_label_blob(roidb, voxelizer)
@@ -58,7 +58,8 @@ def get_minibatch(roidb, voxelizer):
              'data_meta_data': meta_data_blob,
              'data_state': state_blob,
              'data_weights': weights_blob,
-             'data_points': points_blob}
+             'data_points': points_blob,
+            'yolo':yolo_blob}
 
     return blobs
 
@@ -85,6 +86,15 @@ def _get_image_blob(roidb, scale_ind):
         else:
             im = rgba
 
+            
+            
+        yolo_file=open(roidb[i]['yolo'], “r”)
+        yolo_list=[]
+        for line in yolo_file: 
+            yolo_list.append(line.rstrip().lstrip().split())
+            
+                
+        
         # chromatic transform
         if cfg.EXP_DIR != 'lov':
             im = chromatic_transform(im)
@@ -143,7 +153,7 @@ def _get_image_blob(roidb, scale_ind):
     blob_depth = im_list_to_blob(processed_ims_depth, 3)
     blob_normal = im_list_to_blob(processed_ims_normal, 3)
 
-    return blob, blob_depth, blob_normal, im_scales
+    return blob, blob_depth, blob_normal, im_scales,yolo_list
 
 def _process_label_image(label_image, class_colors, class_weights):
     """
