@@ -1,7 +1,7 @@
 import tensorflow as tf
 from networks.network import Network
 
-class vgg16(Network):
+class vgg16_2(Network):
     def __init__(self, input_format, num_steps, num_classes, num_units, scales, trainable=True):
         self.inputs = []
         self.input_format = input_format
