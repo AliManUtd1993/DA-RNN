@@ -54,7 +54,7 @@ class SolverWrapper(object):
         print 'Wrote snapshot to: {:s}'.format(filename)
 
 
-    def train_model(self, sess, train_op, loss, learning_rate, max_iters):
+    def train_model(self, sess, train_op, loss, learning_rate, max_iters, train_op_scene, loss_scene):
         """Network training loop."""
         # add summary
         tf.summary.scalar('loss', loss)
@@ -74,12 +74,12 @@ class SolverWrapper(object):
         timer = Timer()
         for iter in range(max_iters):
             timer.tic()
-            summary, loss_value, lr, _ = sess.run([merge_al, loss, learning_rate, train_op])
+            summary, loss_value, lr, _, _, loss_value_scene = sess.run([merge_al, loss, learning_rate, train_op, train_op_scene, loss_scene])
             train_writer.add_summary(summary, iter)
             timer.toc()
             
-            print 'iter: %d / %d, loss: %.4f, lr: %.8f, time: %.2f' %\
-                    (iter+1, max_iters, loss_value, lr, timer.diff)
+            print 'iter: %d / %d, loss: %.4f, loss_scene: %.4f, lr: %.8f, time: %.2f' %\
+                    (iter+1, max_iters, loss_value, loss_value_scene, lr, timer.diff)
 
             if (iter+1) % (10 * cfg.TRAIN.DISPLAY) == 0:
                 print 'speed: {:.3f}s / iter'.format(timer.average_time)
@@ -92,7 +92,7 @@ class SolverWrapper(object):
             self.snapshot(sess, iter)
 
 
-    def train_model_vertex(self, sess, train_op, loss, loss_cls, loss_vertex, learning_rate, max_iters):
+    def train_model_vertex(self, sess, train_op, loss, loss_cls, loss_vertex, learning_rate, max_iters, train_op_scene, loss_scene):
         """Network training loop."""
         # add summary
         tf.summary.scalar('loss', loss)
@@ -114,12 +114,13 @@ class SolverWrapper(object):
         timer = Timer()
         for iter in range(max_iters):
             timer.tic()
-            summary, loss_value, loss_cls_value, loss_vertex_value, lr, _ = sess.run([merge_al, loss, loss_cls, loss_vertex, learning_rate, train_op])
+            summary, loss_value, loss_cls_value, loss_vertex_value, lr, _, _, loss_value_scene= sess.run([merge_al, loss, loss_cls, loss_vertex, \
+                                                                                      learning_rate, train_op, train_op_scene, loss_scene])
             train_writer.add_summary(summary, iter)
             timer.toc()
             
-            print 'iter: %d / %d, loss: %.4f, loss_cls: %.4f, loss_vertex: %.4f, lr: %.8f, time: %.2f' %\
-                    (iter+1, max_iters, loss_value, loss_cls_value, loss_vertex_value, lr, timer.diff)
+            print 'iter: %d / %d, loss: %.4f, loss_cls: %.4f, loss_scene: %.4f, loss_vertex: %.4f, lr: %.8f, time: %.2f' %\
+                    (iter+1, max_iters, loss_value, loss_value_scene, loss_cls_value, loss_vertex_value, lr, timer.diff)
 
             if (iter+1) % (10 * cfg.TRAIN.DISPLAY) == 0:
                 print 'speed: {:.3f}s / iter'.format(timer.average_time)
@@ -183,7 +184,8 @@ def load_and_enqueue(sess, net, roidb, num_classes, coord):
             if cfg.INPUT == 'RGBD':
                 feed_dict={net.data: data_blob, net.data_p: data_p_blob, net.gt_label_2d: blobs['data_label'], \
                            net.depth: blobs['data_depth'], net.meta_data: blobs['data_meta_data'], \
-                           net.state: blobs['data_state'], net.weights: blobs['data_weights'], net.points: blobs['data_points'], net.keep_prob: 0.5,net.yolo:blobs['yolo']}
+                           net.state: blobs['data_state'], net.weights: blobs['data_weights'], net.points: blobs['data_points'], net.keep_prob: 0.5, \
+                           net.yolo: blobs['yolo'], net.gt_scene_label: blobs['scene_label']}
             else:
                 feed_dict={net.data: data_blob, net.gt_label_2d: blobs['data_label'], \
                            net.depth: blobs['data_depth'], net.meta_data: blobs['data_meta_data'], \
@@ -259,6 +261,16 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
     momentum = cfg.TRAIN.MOMENTUM
     train_op = tf.train.MomentumOptimizer(learning_rate, momentum).minimize(loss, global_step=global_step)
     
+    ### BEGINNING of SCENE CODE ###
+
+    loss_scene = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=net.gt_scene_label, logits=net.get_output('scene_logit')))
+
+    t_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+    wanted_vars = [var for var in t_vars if 'scene' in var.name]
+    learning_rate_scene = 0.01
+    train_op_scene = tf.train.GradientDescentOptimizer(learning_rate_scene).minimize(loss = loss, var_list = wanted_vars)
+    
+    ################### END of SCENE #############
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         sw = SolverWrapper(sess, network, imdb, roidb, output_dir, pretrained_model=pretrained_model)
@@ -273,9 +285,9 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
 
         print 'Solving...'
         if cfg.TRAIN.VERTEX_REG:
-            sw.train_model_vertex(sess, train_op, loss, loss_cls, loss_vertex, learning_rate, max_iters)
+            sw.train_model_vertex(sess, train_op, loss, loss_cls, loss_vertex, learning_rate, max_iters, train_op_scene, loss_scene)
         else:
-            sw.train_model(sess, train_op, loss, learning_rate, max_iters)
+            sw.train_model(sess, train_op, loss, learning_rate, max_iters, train_op_scene, loss_scene)
         print 'done solving'
 
         sess.run(network.close_queue_op)
