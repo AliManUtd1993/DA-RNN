@@ -74,6 +74,7 @@ def _get_image_blob(roidb, scale_ind):
     processed_ims_normal = []
     im_scales = []
     yolo_list_list=[]
+    scene_blob=[]
     for i in xrange(num_images):
         # depth raw
         im_depth_raw = pad_im(cv2.imread(roidb[i]['depth'], cv2.IMREAD_UNCHANGED), 16)
@@ -97,6 +98,7 @@ def _get_image_blob(roidb, scale_ind):
             
                 
         yolo_list_list.append(yolo_list)
+        scene_blob.append(roidb[i]['scene_label'])
         # chromatic transform
         if cfg.EXP_DIR != 'lov':
             im = chromatic_transform(im)
@@ -155,7 +157,9 @@ def _get_image_blob(roidb, scale_ind):
     blob_depth, _ = im_list_to_blob(processed_ims_depth, 3)
     blob_normal, _ = im_list_to_blob(processed_ims_normal, 3)
     blob_yolo = yolo_list_to_blob(yolo_list_list,shapee)
-    return blob, blob_depth, blob_normal, im_scales, blob_yolo
+    scene_blob = something
+    
+    return blob, blob_depth, blob_normal, im_scales, blob_yolo, scene_blob
 
 def _process_label_image(label_image, class_colors, class_weights):
     """
@@ -270,7 +274,7 @@ def _get_label_blob(roidb, voxelizer):
     for i in xrange(num_images):
         depth_blob[i,:,:,0] = processed_depth[i]
         label_blob[i,:,:,:] = processed_label[i]
-        meta_data_blob[i,0,0,:] = processed_meta_data[i]
+        meta_data_blob[i,0,0,:] = processed_meta_data[i]_get_image_blob
 
     state_blob = np.zeros((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
     weights_blob = np.ones((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
