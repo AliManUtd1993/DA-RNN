@@ -58,7 +58,7 @@ class SolverWrapper(object):
         """Network training loop."""
         # add summary
         tf.summary.scalar('loss', loss)
-        merged = tf.summary.merge_all()
+        merge_al = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(self.output_dir, sess.graph)
 
         # intialize variables
@@ -74,7 +74,7 @@ class SolverWrapper(object):
         timer = Timer()
         for iter in range(max_iters):
             timer.tic()
-            summary, loss_value, lr, _ = sess.run([merged, loss, learning_rate, train_op])
+            summary, loss_value, lr, _ = sess.run([merge_al, loss, learning_rate, train_op])
             train_writer.add_summary(summary, iter)
             timer.toc()
             
@@ -96,7 +96,7 @@ class SolverWrapper(object):
         """Network training loop."""
         # add summary
         tf.summary.scalar('loss', loss)
-        merged = tf.summary.merge_all()
+        merge_al = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(self.output_dir, sess.graph)
 
         # intialize variables
@@ -114,7 +114,7 @@ class SolverWrapper(object):
         timer = Timer()
         for iter in range(max_iters):
             timer.tic()
-            summary, loss_value, loss_cls_value, loss_vertex_value, lr, _ = sess.run([merged, loss, loss_cls, loss_vertex, learning_rate, train_op])
+            summary, loss_value, loss_cls_value, loss_vertex_value, lr, _ = sess.run([merge_al, loss, loss_cls, loss_vertex, learning_rate, train_op])
             train_writer.add_summary(summary, iter)
             timer.toc()
             
@@ -183,7 +183,7 @@ def load_and_enqueue(sess, net, roidb, num_classes, coord):
             if cfg.INPUT == 'RGBD':
                 feed_dict={net.data: data_blob, net.data_p: data_p_blob, net.gt_label_2d: blobs['data_label'], \
                            net.depth: blobs['data_depth'], net.meta_data: blobs['data_meta_data'], \
-                           net.state: blobs['data_state'], net.weights: blobs['data_weights'], net.points: blobs['data_points'], net.keep_prob: 0.5}
+                           net.state: blobs['data_state'], net.weights: blobs['data_weights'], net.points: blobs['data_points'], net.keep_prob: 0.5,net.yolo:blobs['yolo']}
             else:
                 feed_dict={net.data: data_blob, net.gt_label_2d: blobs['data_label'], \
                            net.depth: blobs['data_depth'], net.meta_data: blobs['data_meta_data'], \
