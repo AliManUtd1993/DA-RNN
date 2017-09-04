@@ -157,8 +157,8 @@ class vgg16_2(Network):
                  .softmax_high_dimension(self.num_classes, name='prob_normalized')
                  .argmax_2d(name='label_2d')
                  .fc(50, name='scene_fc1', relu=True, trainable=True)
-                 .fc(2, name='scene_fc2', relu=False, trainable=True)
-                 .softmax(2, name='scene_prob'))]
+                 .fc(2, name='scene_logit', relu=False, trainable=True))]
+                 #.softmax(2, name='scene_prob'))]
              
             # collect outputs
             input_state = self.get_output('gru2d')[1]
@@ -169,7 +169,7 @@ class vgg16_2(Network):
             labels_gt_2d.append(self.get_output('gt_label_2d'))
             labels_pred_2d.append(self.get_output('label_2d'))
             scene_gt.append(self.get_output('gt_scene_label'))
-            scene_pred.append(self.get_output('scene_prob'))
+            scene_pred.append(self.get_output('scene_logit'))
              
         self.layers['outputs'] = outputs
         self.layers['probs'] = probs
