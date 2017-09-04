@@ -153,7 +153,7 @@ def _get_image_blob(roidb, scale_ind):
     blob = im_list_to_blob(processed_ims, 3)
     blob_depth = im_list_to_blob(processed_ims_depth, 3)
     blob_normal = im_list_to_blob(processed_ims_normal, 3)
-    blob_yolo = yolo_list_to_blob(yolo_list_list, 3)
+    blob_yolo = yolo_list_to_blob(yolo_list_list)
     return blob, blob_depth, blob_normal, im_scales, blob_yolo
 
 def _process_label_image(label_image, class_colors, class_weights):
