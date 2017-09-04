@@ -94,4 +94,4 @@ if __name__ == '__main__':
     train_net(network, imdb, roidb, output_dir,
               pretrained_model=pretrained_model,
               max_iters=args.max_iters)
-    train_scene()
+    #train_scene()
