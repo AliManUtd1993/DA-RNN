@@ -26,7 +26,7 @@ def get_minibatch(roidb, voxelizer):
 
     # Get the input image blob, formatted for tensorflow
     random_scale_ind = npr.randint(0, high=len(cfg.TRAIN.SCALES_BASE))
-    im_blob, im_depth_blob, im_normal_blob, im_scales,yolo_blob = _get_image_blob(roidb, random_scale_ind)
+    im_blob, im_depth_blob, im_normal_blob, im_scales, yolo_blob, scene_blob = _get_image_blob(roidb, random_scale_ind)
 
     # build the label blob
     depth_blob, label_blob, meta_data_blob, state_blob, weights_blob, points_blob = _get_label_blob(roidb, voxelizer)
@@ -59,7 +59,8 @@ def get_minibatch(roidb, voxelizer):
              'data_state': state_blob,
              'data_weights': weights_blob,
              'data_points': points_blob,
-            'yolo':yolo_blob}
+            'yolo':yolo_blob,
+            'scene_label': scene_blob}
 
     return blobs
 
