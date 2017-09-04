@@ -72,6 +72,7 @@ def _get_image_blob(roidb, scale_ind):
     processed_ims_depth = []
     processed_ims_normal = []
     im_scales = []
+    yolo_list_list=[]
     for i in xrange(num_images):
         # depth raw
         im_depth_raw = pad_im(cv2.imread(roidb[i]['depth'], cv2.IMREAD_UNCHANGED), 16)
@@ -94,7 +95,7 @@ def _get_image_blob(roidb, scale_ind):
             yolo_list.append(line.rstrip().lstrip().split())
             
                 
-        
+        yolo_list_list.append(yolo_list)
         # chromatic transform
         if cfg.EXP_DIR != 'lov':
             im = chromatic_transform(im)
