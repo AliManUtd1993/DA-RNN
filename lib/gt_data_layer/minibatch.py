@@ -150,10 +150,10 @@ def _get_image_blob(roidb, scale_ind):
         processed_ims_normal.append(im_normal)
 
     # Create a blob to hold the input images
-    blob = im_list_to_blob(processed_ims, 3)
-    blob_depth = im_list_to_blob(processed_ims_depth, 3)
-    blob_normal = im_list_to_blob(processed_ims_normal, 3)
-    blob_yolo = yolo_list_to_blob(yolo_list_list)
+    blob, shapee = im_list_to_blob(processed_ims, 3)
+    blob_depth, _ = im_list_to_blob(processed_ims_depth, 3)
+    blob_normal, _ = im_list_to_blob(processed_ims_normal, 3)
+    blob_yolo = yolo_list_to_blob(yolo_list_list,shapee)
     return blob, blob_depth, blob_normal, im_scales, blob_yolo
 
 def _process_label_image(label_image, class_colors, class_weights):
