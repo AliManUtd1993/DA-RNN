@@ -22,15 +22,25 @@ def layer(op):
     def layer_decorated(self, *args, **kwargs):
         # Automatically set a name if not provided.
         name = kwargs.setdefault('name', self.get_unique_name(op.__name__))
+        #print("Are we here???   name:", name)
         # Figure out the layer inputs.
         if len(self.inputs)==0:
+            #print("Are we here2???   input:", self.inputs)
+
             raise RuntimeError('No input variables found for layer %s.'%name)
         elif len(self.inputs)==1:
+            #print("Are we here3???   input:", self.inputs)
+
             layer_input = self.inputs[0]
+            #print("Are we here3???   layer_input:", layer_input)
         else:
             layer_input = list(self.inputs)
+            #print("Are we here4???   input:", self.inputs)
+
         # Perform the operation and get the output.
         layer_output = op(self, layer_input, *args, **kwargs)
+        #print("Are we here5???   layer_output:", layer_output)
+
         # Add to layer LUT.
         self.layers[name] = layer_output
         # This output is now the input for the next layer.
@@ -92,11 +102,13 @@ class Network(object):
             if isinstance(layer, basestring):
                 try:
                     layer = self.layers[layer]
+                    #print("we are in feed: layer is    ", layer)
                     print layer
                 except KeyError:
                     print self.layers.keys()
                     raise KeyError('Unknown layer name fed: %s'%layer)
             self.inputs.append(layer)
+            #print("still in feed, input is     ",self.inputs)
         return self
 
     def get_output(self, layer):
@@ -138,20 +150,28 @@ class Network(object):
     @layer
     def conv(self, input, k_h, k_w, c_o, s_h, s_w, name, reuse=None, relu=True, padding=DEFAULT_PADDING, group=1, trainable=True, biased=True, c_i=-1):
         self.validate_padding(padding)
+        #print("hello from conv1")
         if isinstance(input, tuple):
             input = input[0]
         if c_i == -1:
             c_i = input.get_shape()[-1]
+            #print("hello from conv c_i not passed as an argument")
         assert c_i%group==0
         assert c_o%group==0
+        #print("hello from conv2")
         convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
+        #print("hello from conv3")
         with tf.variable_scope(name, reuse=reuse) as scope:
             init_weights = tf.truncated_normal_initializer(0.0, stddev=0.001)
+            #print("hello from conv4")
             kernel = self.make_var('weights', [k_h, k_w, c_i/group, c_o], init_weights, trainable)
-
+            #print("hello from conv5")
             if group==1:
+                #print("hello from conv6 group==1")
                 output = convolve(input, kernel)
+                #print("hello from conv7  group==1")
             else:
+                #print("hello from conv8 group else")
                 input_groups = tf.split(3, group, input)
                 kernel_groups = tf.split(3, group, kernel)
                 output_groups = [convolve(i, k) for i,k in zip(input_groups, kernel_groups)]
@@ -162,7 +182,8 @@ class Network(object):
                 biases = self.make_var('biases', [c_o], init_biases, trainable)
                 output = tf.nn.bias_add(output, biases)
             if relu:
-                output = tf.nn.relu(output, name=scope.name)    
+                output = tf.nn.relu(output, name=scope.name)
+            #print("hello from conv9 finished")
         return output
     @layer
     def resize(self, input, size):
@@ -184,9 +205,10 @@ class Network(object):
             return tf.nn.bias_add(conv, biases, name=scope.name)
 
     @layer
-    def deconv(self, input, k_h, k_w, c_o, s_h, s_w, name, reuse=None, padding=DEFAULT_PADDING, trainable=True):
+    def deconv(self, input, k_h, k_w, c_o, s_h, s_w, name, reuse=None, padding=DEFAULT_PADDING, trainable=True,c_i=-1):
         self.validate_padding(padding)
-        c_i = input.get_shape()[-1]
+        if(c_i==-1):
+            c_i = input.get_shape()[-1]
         with tf.variable_scope(name, reuse=reuse) as scope:
             # Compute shape out of input
             in_shape = tf.shape(input)
@@ -197,6 +219,7 @@ class Network(object):
 
             # filter
             f_shape = [k_h, k_w, c_o, c_i]
+            #print(f_shape)
             weights = self.make_deconv_filter('weights', f_shape, trainable)
         return tf.nn.conv2d_transpose(input, weights, output_shape, [1, s_h, s_w, 1], padding=padding, name=scope.name)
 
@@ -243,7 +266,7 @@ class Network(object):
         with tf.variable_scope(name, reuse=reuse) as scope:
             vanilla2d = Vanilla2DCell(num_units, channels)
             return vanilla2d(input[0], input[1], scope)
-    
+
     @layer
     def rnn_add2d(self, input, num_units, channels, step, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse) as scope:
@@ -311,15 +334,21 @@ class Network(object):
     @layer
     def fc(self, input, num_out, name, num_in=-1, height=-1, width=-1, channel=-1, reuse=None, relu=True, trainable=True):
         with tf.variable_scope(name, reuse=reuse) as scope:
+            #print("fully connectedddddd: input:", input)
+
             # only use the first input
             if isinstance(input, tuple):
+                #print("fully connectedddddd: input:",input, "                  input[0]:   ",input[0])
                 input = input[0]
+            #print("height", height,"width", width, "channel",channel)
 
             if height > 0 and width > 0 and channel > 0:
+
                 input_shape = tf.shape(input)
                 input = tf.reshape(input, [input_shape[0], height, width, channel])
 
             input_shape = input.get_shape()
+            #print("input shapeeeee:", input_shape)
             if input_shape.ndims == 4:
                 dim = 1
                 for d in input_shape[1:].as_list():
@@ -371,6 +400,14 @@ class Network(object):
         if isinstance(input, tuple):
             input = input[0]
         return tf.nn.log_softmax(input, name=name)
+    @layer
+    def max_2d(self, input, name):
+        # only use the first input
+        #print("ourrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr maxpoooooooooooollll",input)
+        if isinstance(input, tuple):
+            input = input[0]
+
+        return tf.reduce_max(input, reduction_indices=[1,2], keep_dims=False)
 
     @layer
     def softmax_high_dimension(self, input, num_classes, name):
@@ -439,7 +476,7 @@ class Network(object):
 
         with tf.variable_scope(name, reuse=reuse) as scope:
             output = tf.contrib.layers.batch_norm(input,
-                      decay=momentum, 
+                      decay=momentum,
                       updates_collections=None,
                       epsilon=epsilon,
                       scale=True,
@@ -561,7 +598,7 @@ class Network(object):
                 # compatibility transform
                 kernel = np.zeros([1, 1, num_classes, num_classes])
                 for i in range(num_classes):
-                    kernel[0, 0, i, i] = 1            
+                    kernel[0, 0, i, i] = 1
                 init_weights = tf.constant_initializer(value=kernel, dtype=tf.float32)
                 weights_comp = self.make_var('weights_comp', [1, 1, num_classes, num_classes], init_weights, trainable)
                 compatibility = tf.nn.conv2d(message, weights_comp, [1, 1, 1, 1], padding=DEFAULT_PADDING)

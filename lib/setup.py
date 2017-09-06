@@ -141,7 +141,7 @@ ext_modules = [
                                      '-c',
                                      '--compiler-options',
                                      "'-fPIC'"]},
-        include_dirs = ['/usr/local/include/eigen3', '/usr/local/cuda/include', 'kinect_fusion/include']
+        include_dirs = [numpy_include, '/usr/local/include/eigen3', '/usr/local/cuda/include', 'kinect_fusion/include']
     )
 ]
 

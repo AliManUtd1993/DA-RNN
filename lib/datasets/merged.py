@@ -1,3 +1,5 @@
+__author__ = 'ali & kwon'
+
 import os
 import datasets
 import datasets.merged
@@ -47,7 +49,7 @@ class merged(datasets.imdb):
             assert os.path.exists(image_path), \
                   'Path does not exist: {}'.format(image_path)
             return image_path
-          
+
 
     # depth
     def depth_path_at(self, i):
@@ -126,7 +128,7 @@ class merged(datasets.imdb):
         assert os.path.exists(label_path), \
                 'Path does not exist: {}'.format(label_path)
         return label_path
-        
+
     def scene_label_at(self, i):
         return self.scene_label_from_index(self.image_index[i])
 
@@ -135,12 +137,12 @@ class merged(datasets.imdb):
             return 1
         else:
             return 0
-        
+
     def _load_image_set_index(self):
         """
         Load the indexes listed in this dataset's image set file.
         """
-        image_set_file = os.path.join(self._rgbd_scene_path, self._image_set + '.txt')
+        image_set_file = os.path.join(self._merged_path, self._image_set + '.txt')
         assert os.path.exists(image_set_file), \
                 'Path does not exist: {}'.format(image_set_file)
 
@@ -193,17 +195,17 @@ class merged(datasets.imdb):
 
         # metadata path
         metadata_path = self.metadata_path_from_index(index)
-        
+
         # YOLO path
         yolo_path = self.yolo_path_from_index(index)
-        
+
         # scene label
         scene_label = self.scene_label_from_index(index)
-        
+
         # parse image name
         pos = index.find('/')
         video_id = index[:pos]
-        
+
         return {'image': image_path,
                 'depth': depth_path,
                 'label': label_path,
@@ -329,6 +331,6 @@ class merged(datasets.imdb):
 
 
 if __name__ == '__main__':
-    d = datasets.rgbd_scene('train')
+    d = datasets.merged('train')
     res = d.roidb
     from IPython import embed; embed()

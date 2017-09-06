@@ -10,6 +10,7 @@ from .shapenet_scene import shapenet_scene
 from .shapenet_single import shapenet_single
 from .gmu_scene import gmu_scene
 from .rgbd_scene import rgbd_scene
+from .merged import merged
 from .lov import lov
 from . import factory
 

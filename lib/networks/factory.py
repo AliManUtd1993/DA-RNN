@@ -10,6 +10,7 @@
 __sets = {}
 
 import networks.vgg16
+import networks.vgg16_2
 import networks.vgg16_convs
 import networks.resnet50
 import tensorflow as tf
@@ -23,8 +24,10 @@ if cfg.TRAIN.SINGLE_FRAME:
     if cfg.NETWORK == 'FCN8VGG':
         __sets['fcn8_vgg'] = networks.fcn8_vgg(cfg.TRAIN.NUM_CLASSES, cfg.TRAIN.MODEL_PATH)
 else:
-    __sets['vgg16'] = networks.vgg16(cfg.INPUT, cfg.TRAIN.NUM_STEPS, cfg.TRAIN.NUM_CLASSES, cfg.TRAIN.NUM_UNITS, cfg.TRAIN.SCALES_BASE)
-
+    #__sets['vgg16'] = networks.vgg16(cfg.INPUT, cfg.TRAIN.NUM_STEPS, cfg.TRAIN.NUM_CLASSES, cfg.TRAIN.NUM_UNITS, cfg.TRAIN.SCALES_BASE)
+    print("helloooooooooooooooooooooooooooooooooooooo")
+    __sets['vgg16_2'] = networks.vgg16_2(cfg.INPUT, cfg.TRAIN.NUM_STEPS, cfg.TRAIN.NUM_CLASSES, cfg.TRAIN.NUM_UNITS, cfg.TRAIN.SCALES_BASE)
+    print("helloooooooooooooooooooooooooooooooooooooo2222222222222222")
 def get_network(name):
     """Get a network by name."""
     if not __sets.has_key(name):

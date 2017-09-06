@@ -77,7 +77,7 @@ class SolverWrapper(object):
             summary, loss_value, lr, _, _, loss_value_scene = sess.run([merge_al, loss, learning_rate, train_op, train_op_scene, loss_scene])
             train_writer.add_summary(summary, iter)
             timer.toc()
-            
+
             print 'iter: %d / %d, loss: %.4f, loss_scene: %.4f, lr: %.8f, time: %.2f' %\
                     (iter+1, max_iters, loss_value, loss_value_scene, lr, timer.diff)
 
@@ -118,7 +118,7 @@ class SolverWrapper(object):
                                                                                       learning_rate, train_op, train_op_scene, loss_scene])
             train_writer.add_summary(summary, iter)
             timer.toc()
-            
+
             print 'iter: %d / %d, loss: %.4f, loss_cls: %.4f, loss_scene: %.4f, loss_vertex: %.4f, lr: %.8f, time: %.2f' %\
                     (iter+1, max_iters, loss_value, loss_value_scene, loss_cls_value, loss_vertex_value, lr, timer.diff)
 
@@ -241,7 +241,7 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
                 vertex_targets = network.get_output('vertex_targets')
                 vertex_weights = network.get_output('vertex_weights')
                 loss_vertex = tf.div( tf.reduce_sum(tf.multiply(vertex_weights, tf.abs(tf.subtract(vertex_pred, vertex_targets)))), tf.reduce_sum(vertex_weights) )
-                
+
                 loss = loss_cls + loss_vertex
             else:
                 scores = network.get_output('prob')
@@ -260,16 +260,17 @@ def train_net(network, imdb, roidb, output_dir, pretrained_model=None, max_iters
                                            cfg.TRAIN.STEPSIZE, 0.1, staircase=True)
     momentum = cfg.TRAIN.MOMENTUM
     train_op = tf.train.MomentumOptimizer(learning_rate, momentum).minimize(loss, global_step=global_step)
-    
+
     ### BEGINNING of SCENE CODE ###
 
-    loss_scene = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=net.gt_scene_label, logits=net.get_output('scene_logit')))
+    loss_scene = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=network.gt_scene_label, logits=network.get_output('scene_logit')))
 
     t_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
     wanted_vars = [var for var in t_vars if 'scene' in var.name]
+    print("wantededddd",wanted_vars)
     learning_rate_scene = 0.01
-    train_op_scene = tf.train.GradientDescentOptimizer(learning_rate_scene).minimize(loss = loss, var_list = wanted_vars)
-    
+    train_op_scene = tf.train.GradientDescentOptimizer(learning_rate_scene).minimize(loss = loss_scene, var_list = wanted_vars)
+
     ################### END of SCENE #############
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 

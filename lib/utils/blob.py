@@ -25,25 +25,30 @@ def im_list_to_blob(ims, num_channels):
             blob[i, 0:im.shape[0], 0:im.shape[1], :] = im[:,:,np.newaxis]
         else:
             blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
+    #print(blob.shape,"imageeeeee blobbbbb")
 
     return blob,max_shape
-def yolo_list_to_blob(list,shape):
-    
-    num_images = len(list)
+def yolo_list_to_blob(list1,shape):
+
+    num_images = len(list1)
+    #print("654748iujxsrjrdjdj:         ", num_images)
     blob = np.zeros((num_images, shape[0]/16, shape[1]/16, 17),
                     dtype=np.float32)
     for i in xrange(num_images):
-        im = list[i]
-        gridX=np.floor(im[1]*shape[1]/16)
-        if(gridX==shape[1]/16): gridX-=1
-        gridY=np.floor(im[2]*shape[0]/16)
-        if(gridY==shape[0]/16): gridY-=1
-        blob[i,gridY,gridX,:]=im
+        im = list1[i]
+        for ii in xrange(len(im)):
+            gridX=int(np.floor(float(im[ii][1])*shape[1]/16))
+            if(gridX==shape[1]/16): gridX-=1
+            gridY=int(np.floor(float(im[ii][2])*shape[0]/16))
+            if(gridY==shape[0]/16): gridY-=1
+            blob[i,gridY,gridX,:]=im[ii]
+            #if(i==0):
+                #print(blob[i,:,:,0])
 
     return blob
-    
-    
-    
+
+
+
 def prep_im_for_blob(im, pixel_means, target_size, max_size):
     """Mean subtract and scale an image for use in a blob."""
     im = im.astype(np.float32, copy=False)

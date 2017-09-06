@@ -12,7 +12,7 @@ import numpy as np
 import numpy.random as npr
 import cv2
 from fcn.config import cfg
-from utils.blob import im_list_to_blob, pad_im, chromatic_transform
+from utils.blob import im_list_to_blob, pad_im, chromatic_transform, yolo_list_to_blob
 from utils.se3 import *
 import scipy.io
 from normals import gpu_normals
@@ -37,10 +37,15 @@ def get_minibatch(roidb, voxelizer):
 
     height = im_blob.shape[1]
     width = im_blob.shape[2]
+    print(ims_per_batch)
     im_blob = im_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     im_depth_blob = im_depth_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     im_normal_blob = im_normal_blob.reshape((num_steps, ims_per_batch, height, width, -1))
-
+    print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
+    scene_blob=scene_blob.reshape((num_steps, ims_per_batch))
+    yolo_blob=yolo_blob.reshape((num_steps, ims_per_batch, height/16, width/16, -1))
+    print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
+    print(scene_blob.shape,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
     height = label_blob.shape[1]
     width = label_blob.shape[2]
     depth_blob = depth_blob.reshape((num_steps, ims_per_batch, height, width, -1))
@@ -89,16 +94,17 @@ def _get_image_blob(roidb, scale_ind):
         else:
             im = rgba
 
-            
-            
-        yolo_file=open(roidb[i]['yolo'], “r”)
+        yolo_file=open(roidb[i]['yolo'], 'r')
+        #print("yoloooooooooooo",roidb[i]['yolo'])
         yolo_list=[]
-        for line in yolo_file: 
+        for line in yolo_file:
+            #print(len(line))
             yolo_list.append(line.rstrip().lstrip().split())
-            
-                
+
+        #print("yolooooooooooo listtttttttttt",len(yolo_list),yolo_list[0])
         yolo_list_list.append(yolo_list)
         scene_blob.append(roidb[i]['scene_label'])
+        print("sceneeeeeeeeeeeeee labelllllllllllll",roidb[i]['scene_label'],scene_blob)
         # chromatic transform
         if cfg.EXP_DIR != 'lov':
             im = chromatic_transform(im)
@@ -128,7 +134,7 @@ def _get_image_blob(roidb, scale_ind):
         im_orig -= cfg.PIXEL_MEANS
         im_depth = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
         processed_ims_depth.append(im_depth)
-        
+
         # meta data
         meta_data = scipy.io.loadmat(roidb[i]['meta_data'])
         K = meta_data['intrinsic_matrix'].astype(np.float32, copy=True)
@@ -151,15 +157,15 @@ def _get_image_blob(roidb, scale_ind):
         im_orig -= cfg.PIXEL_MEANS
         im_normal = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
         processed_ims_normal.append(im_normal)
-
+    #print("yolo list  list                              ",len(yolo_list_list))
     # Create a blob to hold the input images
     blob, shapee = im_list_to_blob(processed_ims, 3)
     blob_depth, _ = im_list_to_blob(processed_ims_depth, 3)
     blob_normal, _ = im_list_to_blob(processed_ims_normal, 3)
     blob_yolo = yolo_list_to_blob(yolo_list_list,shapee)
-    scene_blob = something
-    
-    return blob, blob_depth, blob_normal, im_scales, blob_yolo, scene_blob
+    #scene_blob = something
+
+    return blob, blob_depth, blob_normal, im_scales, blob_yolo, np.array(scene_blob)
 
 def _process_label_image(label_image, class_colors, class_weights):
     """
@@ -182,7 +188,7 @@ def _process_label_image(label_image, class_colors, class_weights):
         for i in xrange(len(class_colors)):
             I = np.where(label_image == i)
             label_index[I[0], I[1], i] = class_weights[i]
-    
+
     return label_index
 
 
@@ -274,7 +280,7 @@ def _get_label_blob(roidb, voxelizer):
     for i in xrange(num_images):
         depth_blob[i,:,:,0] = processed_depth[i]
         label_blob[i,:,:,:] = processed_label[i]
-        meta_data_blob[i,0,0,:] = processed_meta_data[i]_get_image_blob
+        meta_data_blob[i,0,0,:] = processed_meta_data[i]
 
     state_blob = np.zeros((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
     weights_blob = np.ones((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)

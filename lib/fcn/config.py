@@ -63,10 +63,10 @@ __C.TRAIN.CHROMATIC = True
 __C.TRAIN.IMS_PER_BATCH = 2
 __C.TRAIN.NUM_STEPS = 5
 __C.TRAIN.NUM_UNITS = 64
-__C.TRAIN.NUM_CLASSES = 10
+__C.TRAIN.NUM_CLASSES = 13
 
 # Use horizontally-flipped images during training?
-__C.TRAIN.USE_FLIPPED = True
+__C.TRAIN.USE_FLIPPED = False
 
 # Iterations between snapshots
 __C.TRAIN.SNAPSHOT_ITERS = 10000

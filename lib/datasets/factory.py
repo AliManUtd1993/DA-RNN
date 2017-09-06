@@ -14,6 +14,7 @@ import datasets.shapenet_single
 import datasets.gmu_scene
 import datasets.rgbd_scene
 import datasets.lov
+import datasets.merged
 import numpy as np
 
 # shapenet dataset

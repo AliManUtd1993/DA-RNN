@@ -21,20 +21,19 @@ class vgg16_2(Network):
         self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units])
         self.points = tf.placeholder(tf.float32, [None, None, None, 3])
         self.keep_prob = tf.placeholder(tf.float32)
-        self.gt_scene_label = tf.placeholder(tf.float32,shape=[self.num_steps, None])
-        self.yolo = tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes])
-        
+        self.gt_scene_label = tf.placeholder(tf.float32,shape=[self.num_steps,None])
+        self.yolo = tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes+4])
+        #print("num classes", self.num_classes)
+
         # define a queue
         if input_format == 'RGBD':
+            #print("RGBDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDdd")
             q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
- +          self.enqueue_op = q.enqueue([self.data, self.data_p, self.gt_label_2d, self.depth, self.meta_data, self.state, self.weights, self.points, self.keep_prob, self.yolo, self.gt_scene_label)
- +          self.data_queue, self.data_p_queue, self.gt_label_2d_queue, self.depth_queue, self.meta_data_queue, self.state_queue, self.weights_queue, self.points_queue, self.keep_prob_queue,self.yolo_queue, self.gt_scene_label_queue = q.dequeue()
- +          self.layers = dict({'data': [], 'data_p': [], 'gt_label_2d': [], 'depth': [], 'meta_data': [], 'state': [], 'weights': [], 'points': [] ,'yolo':[], 'gt_scene_label': [])
-        else:
-            q = tf.FIFOQueue(100, [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32])
-            self.enqueue_op = q.enqueue([self.data, self.gt_label_2d, self.depth, self.meta_data, self.state, self.weights, self.points, self.keep_prob])
-            self.data_queue, self.gt_label_2d_queue, self.depth_queue, self.meta_data_queue, self.state_queue, self.weights_queue, self.points_queue, self.keep_prob_queue = q.dequeue()
-            self.layers = dict({'data': [], 'gt_label_2d': [], 'depth': [], 'meta_data': [], 'state': [], 'weights': [], 'points': []})
+            self.enqueue_op = q.enqueue([self.data, self.data_p, self.gt_label_2d, self.depth, self.meta_data,self.yolo, self.gt_scene_label,\
+             self.state, self.weights, self.points, self.keep_prob])
+            self.data_queue, self.data_p_queue, self.gt_label_2d_queue, self.depth_queue,\
+             self.meta_data_queue,self.yolo_queue, self.gt_scene_label_queue, self.state_queue, self.weights_queue, self.points_queue, self.keep_prob_queue = q.dequeue()
+            self.layers = dict({'data': [], 'data_p': [], 'gt_label_2d': [], 'depth': [], 'meta_data': [],'yolo':[], 'gt_scene_label': [], 'state': [], 'weights': [], 'points': [] })
 
         self.close_queue_op = q.close(cancel_pending_enqueues=True)
         self.trainable = trainable
@@ -47,18 +46,19 @@ class vgg16_2(Network):
         input_label_2d = tf.unstack(self.gt_label_2d_queue, self.num_steps)
         input_depth = tf.unstack(self.depth_queue, self.num_steps)
         input_meta_data = tf.unstack(self.meta_data_queue, self.num_steps)
+        input_yolo = tf.unstack(self.yolo_queue, self.num_steps)
+        input_scene_label =tf.unstack(self.gt_scene_label_queue, self.num_steps)
         input_state = self.state_queue
         input_weights = self.weights_queue
         input_points = self.points_queue
-        input_yolo = self.yolo_queue
-        input_scene_label = self.gt_scene_label_queue
+
         outputs = []
         probs = []
         labels_gt_2d = []
         labels_pred_2d = []
         scene_gt = []
         scene_pred = []
-                                
+
         for i in range(self.num_steps):
             # set inputs
             self.layers['data'] = input_data[i]
@@ -70,14 +70,19 @@ class vgg16_2(Network):
             self.layers['state'] = input_state
             self.layers['weights'] = input_weights
             self.layers['points'] = input_points
-            self.layers['fromYOLO'] = input_yolo[i]
+            self.layers['yolo'] = input_yolo[i]
+            #print("OBVIOUS", input_yolo[i],input_data_p[i])
+            #print(self.scale)
             self.layers['gt_scene_label'] = input_scene_label[i]
-                                
+            print("DDDDDDDDDDDDDDDDADJKLWEDJLEKDJLE", input_data)
+
+            print("ADJKLWEDJLEKDJLE", input_scene_label)
             if i == 0:
                 reuse = None
             else:
                 reuse = True
 
+            #print ("AAAAA %d", i)
             (self.feed('data')
                  .conv(3, 3, 64, 1, 1, name='conv1_1', reuse=reuse, c_i=3)
                  .conv(3, 3, 64, 1, 1, name='conv1_2', reuse=reuse, c_i=64)
@@ -97,7 +102,7 @@ class vgg16_2(Network):
                  .conv(3, 3, 512, 1, 1, name='conv5_2', reuse=reuse, c_i=512)
                  .conv(3, 3, 512, 1, 1, name='conv5_3', reuse=reuse, c_i=512))
 
-            if self.input_format == 'RGBD': 
+            if self.input_format == 'RGBD':
                 (self.feed('data_p')
                      .conv(3, 3, 64, 1, 1, name='conv1_1_p', reuse=reuse, c_i=3)
                      .conv(3, 3, 64, 1, 1, name='conv1_2_p', reuse=reuse, c_i=64)
@@ -135,17 +140,35 @@ class vgg16_2(Network):
 
             (self.feed('score_conv4', 'upscore_conv5')
                  .add(name='add_score'))
-            (self.feed('add_score','fromYOLO)
- +                     .concat(3,name='our_concat')
-                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes+4, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False))
+
+
+            #print('the two layers are:',self.layers['add_score'],self.layers['yolo'])
+            (self.feed('add_score','yolo')
+                 .concat(3,name='our_concat')
+                 .deconv(int(16*self.scale), int(16*self.scale), self.num_units+self.num_classes+4, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False,c_i=self.num_units+self.num_classes+4))
+            #print("YOLO", self.layers['conv1_1'])
+            #print("DATA", self.layers['add_score'])
+
+            #(self.feed('our_concat')
+            #     )
+                 #.deconv(int(16*self.scale), int(16*self.scale), self.num_units, int(8*self.scale), int(8*self.scale), name='upscore', reuse=reuse, trainable=False)))
 
             (self.feed('state', 'weights', 'points', 'depth', 'meta_data')
                  .compute_flow(3, 0.02, 50, name='flow'))
 
             (self.feed('upscore', 'flow')
-                 .rnn_gru2d(self.num_units, self.num_units+self.num_classes+4, name='gru2d', reuse=reuse)
-                 .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units)
+                 .rnn_gru2d(self.num_units+self.num_classes+4, self.num_units+self.num_classes+4, name='gru2d', reuse=reuse)
+                 #.rnn_gru2d(self.num_units, self.num_units, name='gru2d', reuse=reuse)
+
+                 .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units+self.num_classes+4)
                  .log_softmax_high_dimension(self.num_classes, name='prob'))
+
+            (self.feed('score')
+                .max_2d(name = 'our_max_pool')
+                .fc(2, name='scene_logit', reuse=reuse, relu=False, trainable=True))
+
+                #.fc(50, name='scene_fc1', relu=True, trainable=True)
+                #.fc(2, name='scene_logit', relu=False, trainable=True))
             '''
             (self.feed('upscore', 'flow')
                  .rnn_gru2d_original(self.num_units, self.num_units, name='gru2d', reuse=reuse)
@@ -155,11 +178,10 @@ class vgg16_2(Network):
 
             (self.feed('score')
                  .softmax_high_dimension(self.num_classes, name='prob_normalized')
-                 .argmax_2d(name='label_2d')
-                 .fc(50, name='scene_fc1', relu=True, trainable=True)
-                 .fc(2, name='scene_logit', relu=False, trainable=True))]
+                 .argmax_2d(name='label_2d'))
+
                  #.softmax(2, name='scene_prob'))]
-             
+
             # collect outputs
             input_state = self.get_output('gru2d')[1]
             input_weights = self.get_output('gru2d')[2]
@@ -170,7 +192,7 @@ class vgg16_2(Network):
             labels_pred_2d.append(self.get_output('label_2d'))
             scene_gt.append(self.get_output('gt_scene_label'))
             scene_pred.append(self.get_output('scene_logit'))
-             
+
         self.layers['outputs'] = outputs
         self.layers['probs'] = probs
         self.layers['labels_gt_2d'] = labels_gt_2d
