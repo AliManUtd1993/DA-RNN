@@ -13,6 +13,7 @@ import _init_paths
 from fcn.test import test_net
 from fcn.test import test_net_single_frame
 from fcn.config import cfg, cfg_from_file
+from fcn.train import get_training_roidb
 from datasets.factory import get_imdb
 import argparse
 import pprint
@@ -40,7 +41,7 @@ def parse_args():
                         default=True, type=bool)
     parser.add_argument('--imdb', dest='imdb_name',
                         help='dataset to test',
-                        default='shapenet_scene_val', type=str)
+                        default='merged_val', type=str)
     parser.add_argument('--network', dest='network_name',
                         help='name of the network',
                         default=None, type=str)
@@ -73,16 +74,14 @@ if __name__ == '__main__':
     weights_filename = os.path.splitext(os.path.basename(args.model))[0]
 
     imdb = get_imdb(args.imdb_name)
-
+    print(args.imdb_name)
+    roidb = get_training_roidb(imdb)
     cfg.GPU_ID = args.gpu_id
     device_name = '/gpu:{:d}'.format(args.gpu_id)
     print device_name
 
     cfg.TRAIN.NUM_STEPS = 1
     cfg.TRAIN.GRID_SIZE = cfg.TEST.GRID_SIZE
-    if cfg.NETWORK == 'FCN8VGG':
-        path = osp.abspath(osp.join(cfg.ROOT_DIR, args.pretrained_model))
-        cfg.TRAIN.MODEL_PATH = path
     cfg.TRAIN.TRAINABLE = False
 
     from networks.factory import get_network
@@ -98,8 +97,8 @@ if __name__ == '__main__':
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
     saver.restore(sess, args.model)
     print ('Loading model weights from {:s}').format(args.model)
-
+    print("                           ",args.network_name)
     if cfg.TEST.SINGLE_FRAME:
         test_net_single_frame(sess, network, imdb, weights_filename, args.rig_name, args.kfusion)
     else:
-        test_net(sess, network, imdb, weights_filename, args.rig_name, args.kfusion)
+        test_net(sess, network, imdb, roidb, weights_filename, args.rig_name, args.kfusion)

@@ -32,15 +32,16 @@ def yolo_list_to_blob(list1,shape):
 
     num_images = len(list1)
     #print("654748iujxsrjrdjdj:         ", num_images)
-    blob = np.zeros((num_images, shape[0]/16, shape[1]/16, 17),
+    blob = np.zeros((num_images, shape[0]/8, shape[1]/8, 17),
                     dtype=np.float32)
     for i in xrange(num_images):
         im = list1[i]
+        #print(im)
         for ii in xrange(len(im)):
-            gridX=int(np.floor(float(im[ii][1])*shape[1]/16))
-            if(gridX==shape[1]/16): gridX-=1
-            gridY=int(np.floor(float(im[ii][2])*shape[0]/16))
-            if(gridY==shape[0]/16): gridY-=1
+            gridX=int(np.floor(float(im[ii][1])*shape[1]/8))
+            if(gridX==shape[1]/8): gridX-=1
+            gridY=int(np.floor(float(im[ii][2])*shape[0]/8))
+            if(gridY==shape[0]/8): gridY-=1
             blob[i,gridY,gridX,:]=im[ii]
             #if(i==0):
                 #print(blob[i,:,:,0])

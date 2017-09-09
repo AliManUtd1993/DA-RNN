@@ -88,11 +88,13 @@ class merged(datasets.imdb):
             image_path = os.path.join(self._data_path, index + '-label' + self._image_ext)
             assert os.path.exists(image_path), \
                   'Path does not exist: {}'.format(image_path)
+            print(image_path)
             return image_path
         else:
             image_path = os.path.join(self._data_path, index + '_label' + self._image_ext)
             assert os.path.exists(image_path), \
                   'Path does not exist: {}'.format(image_path)
+            print(image_path)
             return image_path
 
     # camera pose
@@ -192,7 +194,7 @@ class merged(datasets.imdb):
 
         # label path
         label_path = self.label_path_from_index(index)
-
+        print(label_path,"we are hereeeeee")
         # metadata path
         metadata_path = self.metadata_path_from_index(index)
 
@@ -259,13 +261,31 @@ class merged(datasets.imdb):
 
         return image.astype(np.uint8)
 
+    def _process_label_image(self, label_image):
+        """
+        change label image to label index
+        """
+        class_colors = self._class_colors
+        width = label_image.shape[1]
+        height = label_image.shape[0]
+        label_index = np.zeros((height, width), dtype=np.float32)
+
+        # label image is in BGR order
+        index = label_image[:,:,2] + 256*label_image[:,:,1] + 256*256*label_image[:,:,0]
+        for i in xrange(len(class_colors)):
+            color = class_colors[i]
+            ind = color[0] + 256*color[1] + 256*256*color[2]
+            I = np.where(index == ind)
+            label_index[I] = i
+
+        return label_index
 
     def evaluate_segmentations(self, segmentations, output_dir):
         print 'evaluating segmentations'
         # compute histogram
         n_cl = self.num_classes
         hist = np.zeros((n_cl, n_cl))
-
+        print(n_cl,"   number of classes")
         # make image dir
         image_dir = os.path.join(output_dir, 'images')
         if not os.path.exists(image_dir):
@@ -279,35 +299,22 @@ class merged(datasets.imdb):
 
         # for each image
         for im_ind, index in enumerate(self.image_index):
+            print(im_ind, index)
+
             # read ground truth labels
             im = cv2.imread(self.label_path_from_index(index), cv2.IMREAD_UNCHANGED)
+            #if (im.shape)
+            #gt_labels = im.astype(np.float32)
+            #if(len(im.shape) == 3):
+            #    gt_labels = self._process_label_image(im)
+            #else:
             gt_labels = im.astype(np.float32)
-
             # predicated labels
             sg_labels = segmentations[im_ind]['labels']
-
+            cv2.imwrite(image_dir+"/justlabel"+str(im_ind)+'.png',gt_labels)
+            #print(sg_labels.shape," sggggggggggggggggggggg")
             hist += self.fast_hist(gt_labels.flatten(), sg_labels.flatten(), n_cl)
 
-            '''
-            # label image
-            rgba = cv2.imread(self.image_path_from_index(index), cv2.IMREAD_UNCHANGED)
-            image = rgba[:,:,:3]
-            alpha = rgba[:,:,3]
-            I = np.where(alpha == 0)
-            image[I[0], I[1], :] = 255
-            label_image = self.labels_to_image(image, sg_labels)
-            # save image
-            filename = os.path.join(image_dir, '%04d.png' % im_ind)
-            print filename
-            cv2.imwrite(filename, label_image)
-            '''
-            '''
-            # save matlab result
-            labels = {'labels': sg_labels}
-            filename = os.path.join(mat_dir, '%04d.mat' % im_ind)
-            print filename
-            scipy.io.savemat(filename, labels)
-            #'''
 
         # overall accuracy
         acc = np.diag(hist).sum() / hist.sum()
@@ -328,7 +335,19 @@ class merged(datasets.imdb):
         with open(filename, 'wt') as f:
             for i in range(n_cl):
                 f.write('{:f}\n'.format(iu[i]))
+        filename2 = os.path.join(output_dir, 'conf_segmentation.txt')
+        with open(filename2, 'wt') as f2:
+            for i in range(n_cl):
+                for j in range(n_cl):
+                    f2.write('{:f}  '.format(hist[i][j]/hist.sum(1)[i]))
+                f2.write("\n")
 
+        filename3 = os.path.join(output_dir, 'conf_unnorm_segmentation.txt')
+        with open(filename3, 'wt') as f3:
+            for i in range(n_cl):
+                for j in range(n_cl):
+                    f3.write('{:f}  '.format(hist[i][j]))
+                f3.write("\n")
 
 if __name__ == '__main__':
     d = datasets.merged('train')

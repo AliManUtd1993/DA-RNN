@@ -17,11 +17,11 @@ class vgg16_2(Network):
         self.gt_label_2d = tf.placeholder(tf.float32, shape=[self.num_steps, None, None, None, self.num_classes])
         self.depth = tf.placeholder(tf.float32, shape=[self.num_steps, None, None, None, 1])
         self.meta_data = tf.placeholder(tf.float32, shape=[self.num_steps, None, None, None, 48])
-        self.state = tf.placeholder(tf.float32, [None, None, None, self.num_units])
-        self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units])
+        self.state = tf.placeholder(tf.float32, [None, None, None, self.num_units+self.num_classes+4])
+        self.weights = tf.placeholder(tf.float32, [None, None, None, self.num_units+self.num_classes+4])
         self.points = tf.placeholder(tf.float32, [None, None, None, 3])
         self.keep_prob = tf.placeholder(tf.float32)
-        self.gt_scene_label = tf.placeholder(tf.float32,shape=[self.num_steps,None])
+        self.gt_scene_label = tf.placeholder(tf.float32,shape=[self.num_steps, 1])
         self.yolo = tf.placeholder(tf.float32,shape=[self.num_steps, None, None, None, self.num_classes+4])
         #print("num classes", self.num_classes)
 
@@ -74,9 +74,9 @@ class vgg16_2(Network):
             #print("OBVIOUS", input_yolo[i],input_data_p[i])
             #print(self.scale)
             self.layers['gt_scene_label'] = input_scene_label[i]
-            print("DDDDDDDDDDDDDDDDADJKLWEDJLEKDJLE", input_data)
+            #print("DDDDDDDDDDDDDDDDADJKLWEDJLEKDJLE", input_data)
 
-            print("ADJKLWEDJLEKDJLE", input_scene_label)
+            #print("ADJKLWEDJLEKDJLE", input_scene_label)
             if i == 0:
                 reuse = None
             else:
@@ -162,11 +162,11 @@ class vgg16_2(Network):
 
                  .conv(1, 1, self.num_classes, 1, 1, name='score', reuse=reuse, c_i=self.num_units+self.num_classes+4)
                  .log_softmax_high_dimension(self.num_classes, name='prob'))
-
+            """
             (self.feed('score')
                 .max_2d(name = 'our_max_pool')
                 .fc(2, name='scene_logit', reuse=reuse, relu=False, trainable=True))
-
+            """
                 #.fc(50, name='scene_fc1', relu=True, trainable=True)
                 #.fc(2, name='scene_logit', relu=False, trainable=True))
             '''
@@ -190,8 +190,8 @@ class vgg16_2(Network):
             probs.append(self.get_output('prob_normalized'))
             labels_gt_2d.append(self.get_output('gt_label_2d'))
             labels_pred_2d.append(self.get_output('label_2d'))
-            scene_gt.append(self.get_output('gt_scene_label'))
-            scene_pred.append(self.get_output('scene_logit'))
+            #scene_gt.append(self.get_output('gt_scene_label'))
+            #scene_pred.append(self.get_output('scene_logit'))
 
         self.layers['outputs'] = outputs
         self.layers['probs'] = probs

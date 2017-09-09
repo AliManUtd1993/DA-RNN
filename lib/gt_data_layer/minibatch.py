@@ -37,15 +37,15 @@ def get_minibatch(roidb, voxelizer):
 
     height = im_blob.shape[1]
     width = im_blob.shape[2]
-    print(ims_per_batch)
+    #print(ims_per_batch)
     im_blob = im_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     im_depth_blob = im_depth_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     im_normal_blob = im_normal_blob.reshape((num_steps, ims_per_batch, height, width, -1))
-    print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
+    #print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
     scene_blob=scene_blob.reshape((num_steps, ims_per_batch))
-    yolo_blob=yolo_blob.reshape((num_steps, ims_per_batch, height/16, width/16, -1))
-    print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
-    print(scene_blob.shape,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
+    yolo_blob=yolo_blob.reshape((num_steps, ims_per_batch, height/8, width/8, -1))
+    #print(scene_blob,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
+    #print(scene_blob.shape,"0007592994syrglhdrkljhdrkldhklmdhkl;mxhfsrljknsxhgklnjmsxhdg")
     height = label_blob.shape[1]
     width = label_blob.shape[2]
     depth_blob = depth_blob.reshape((num_steps, ims_per_batch, height, width, -1))
@@ -103,8 +103,8 @@ def _get_image_blob(roidb, scale_ind):
 
         #print("yolooooooooooo listtttttttttt",len(yolo_list),yolo_list[0])
         yolo_list_list.append(yolo_list)
-        scene_blob.append(roidb[i]['scene_label'])
-        print("sceneeeeeeeeeeeeee labelllllllllllll",roidb[i]['scene_label'],scene_blob)
+        scene_blob.append(roidb[i]['scene_label']*1.0)
+        #print("sceneeeeeeeeeeeeee labelllllllllllll",roidb[i]['scene_label'],scene_blob)
         # chromatic transform
         if cfg.EXP_DIR != 'lov':
             im = chromatic_transform(im)
@@ -164,8 +164,8 @@ def _get_image_blob(roidb, scale_ind):
     blob_normal, _ = im_list_to_blob(processed_ims_normal, 3)
     blob_yolo = yolo_list_to_blob(yolo_list_list,shapee)
     #scene_blob = something
-
-    return blob, blob_depth, blob_normal, im_scales, blob_yolo, np.array(scene_blob)
+    #print("SIZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE: ",np.atleast_2d(np.array(scene_blob)).T.shape)
+    return blob, blob_depth, blob_normal, im_scales, blob_yolo, np.atleast_2d(np.array(scene_blob)).T
 
 def _process_label_image(label_image, class_colors, class_weights):
     """
@@ -282,8 +282,8 @@ def _get_label_blob(roidb, voxelizer):
         label_blob[i,:,:,:] = processed_label[i]
         meta_data_blob[i,0,0,:] = processed_meta_data[i]
 
-    state_blob = np.zeros((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
-    weights_blob = np.ones((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
+    state_blob = np.zeros((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
+    weights_blob = np.ones((cfg.TRAIN.IMS_PER_BATCH, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
     points_blob = np.zeros((cfg.TRAIN.IMS_PER_BATCH, height, width, 3), dtype=np.float32)
 
     return depth_blob, label_blob, meta_data_blob, state_blob, weights_blob, points_blob

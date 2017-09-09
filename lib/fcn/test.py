@@ -10,7 +10,7 @@
 from fcn.config import cfg, get_output_dir
 import argparse
 from utils.timer import Timer
-from utils.blob import im_list_to_blob, pad_im, unpad_im
+from utils.blob import im_list_to_blob, pad_im, unpad_im,yolo_list_to_blob
 from utils.voxelizer import Voxelizer, set_axes_equal
 from utils.se3 import *
 import numpy as np
@@ -25,7 +25,7 @@ from normals import gpu_normals
 from kinect_fusion import kfusion
 # from pose_estimation import ransac
 
-def _get_image_blob(im, im_depth, meta_data):
+def _get_image_blob(im, im_depth, meta_data, yolo_list_list):
     """Converts an image into a network input.
 
     Arguments:
@@ -90,12 +90,13 @@ def _get_image_blob(im, im_depth, meta_data):
     processed_ims_normal.append(im)
 
     # Create a blob to hold the input images
-    blob = im_list_to_blob(processed_ims, 3)
-    blob_rescale = im_list_to_blob(processed_ims_rescale, 3)
-    blob_depth = im_list_to_blob(processed_ims_depth, 3)
-    blob_normal = im_list_to_blob(processed_ims_normal, 3)
+    blob, shapee = im_list_to_blob(processed_ims, 3)
+    blob_rescale, _ = im_list_to_blob(processed_ims_rescale, 3)
+    blob_depth, _ = im_list_to_blob(processed_ims_depth, 3)
+    blob_normal, _ = im_list_to_blob(processed_ims_normal, 3)
+    blob_yolo = yolo_list_to_blob(yolo_list_list,shapee)
 
-    return blob, blob_rescale, blob_depth, blob_normal, np.array(im_scale_factors)
+    return blob, blob_rescale, blob_depth, blob_normal, np.array(im_scale_factors), blob_yolo
 
 
 def im_segment_single_frame(sess, net, im, im_depth, meta_data, num_classes):
@@ -103,7 +104,7 @@ def im_segment_single_frame(sess, net, im, im_depth, meta_data, num_classes):
     """
 
     # compute image blob
-    im_blob, im_rescale_blob, im_depth_blob, im_normal_blob, im_scale_factors = _get_image_blob(im, im_depth, meta_data)
+    im_blob, im_rescale_blob, im_depth_blob, im_normal_blob, im_scale_factors = _get_image_blob(im, im_depth, meta_data,yolo_list_list)
 
     # use a fake label blob of ones
     height = im_depth.shape[0]
@@ -140,12 +141,12 @@ def im_segment_single_frame(sess, net, im, im_depth, meta_data, num_classes):
     return labels_2d[0,:,:].astype(np.uint8), probs[0,:,:,:], vertex_pred
 
 
-def im_segment(sess, net, im, im_depth, state, weights, points, meta_data, voxelizer, pose_world2live, pose_live2world):
+def im_segment(sess, net, im, im_depth, yolo_list_list, state, weights, points, meta_data, voxelizer, pose_world2live, pose_live2world):
     """segment image
     """
 
     # compute image blob
-    im_blob, im_rescale_blob, im_depth_blob, im_normal_blob, im_scale_factors = _get_image_blob(im, im_depth, meta_data)
+    im_blob, im_rescale_blob, im_depth_blob, im_normal_blob, im_scale_factors,yolo_blob = _get_image_blob(im, im_depth, meta_data,yolo_list_list)
 
     # depth
     depth = im_depth.astype(np.float32, copy=True) / float(meta_data['factor_depth'])
@@ -200,6 +201,8 @@ def im_segment(sess, net, im, im_depth, state, weights, points, meta_data, voxel
     label_blob = label_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     depth_blob = depth_blob.reshape((num_steps, ims_per_batch, height, width, -1))
     meta_data_blob = meta_data_blob.reshape((num_steps, ims_per_batch, 1, 1, -1))
+    yolo_blob=yolo_blob.reshape((num_steps, ims_per_batch, height/8, width/8, -1))
+    gt_scene_label_fake = np.zeros((1, 1))
 
     # forward pass
     if cfg.INPUT == 'RGBD':
@@ -214,7 +217,8 @@ def im_segment(sess, net, im, im_depth, state, weights, points, meta_data, voxel
 
     if cfg.INPUT == 'RGBD':
         feed_dict = {net.data: data_blob, net.data_p: data_p_blob, net.gt_label_2d: label_blob, net.state: state, net.weights: weights, net.depth: depth_blob, \
-                     net.meta_data: meta_data_blob, net.points: points, net.keep_prob: 1.0}
+                     net.meta_data: meta_data_blob, net.points: points, net.keep_prob: 1.0, net.yolo:yolo_blob, net.gt_scene_label: gt_scene_label_fake}
+
     else:
         feed_dict = {net.data: data_blob, net.gt_label_2d: label_blob, net.state: state, net.weights: weights, net.depth: depth_blob, \
                      net.meta_data: meta_data_blob, net.points: points, net.keep_prob: 1.0}
@@ -280,7 +284,7 @@ def vis_segmentations(im, im_depth, labels, labels_gt, colors):
 ##################
 # test video
 ##################
-def test_net(sess, net, imdb, weights_filename, rig_filename, is_kfusion):
+def test_net(sess, net, imdb, roidb, weights_filename, rig_filename, is_kfusion):
 
     output_dir = get_output_dir(imdb, weights_filename)
     if not os.path.exists(output_dir):
@@ -325,7 +329,7 @@ def test_net(sess, net, imdb, weights_filename, rig_filename, is_kfusion):
     video_index = ''
     have_prediction = False
     for i in perm:
-        rgba = pad_im(cv2.imread(imdb.image_path_at(i), cv2.IMREAD_UNCHANGED), 16)
+        rgba = pad_im(cv2.imread(roidb[i]['image'], cv2.IMREAD_UNCHANGED), 16)
         height = rgba.shape[0]
         width = rgba.shape[1]
 
@@ -335,15 +339,15 @@ def test_net(sess, net, imdb, weights_filename, rig_filename, is_kfusion):
         if video_index == '':
             video_index = image_index[:pos]
             have_prediction = False
-            state = np.zeros((1, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
-            weights = np.ones((1, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
+            state = np.zeros((1, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
+            weights = np.ones((1, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
             points = np.zeros((1, height, width, 3), dtype=np.float32)
         else:
             if video_index != image_index[:pos]:
                 have_prediction = False
                 video_index = image_index[:pos]
-                state = np.zeros((1, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
-                weights = np.ones((1, height, width, cfg.TRAIN.NUM_UNITS), dtype=np.float32)
+                state = np.zeros((1, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
+                weights = np.ones((1, height, width, cfg.TRAIN.NUM_UNITS + 17), dtype=np.float32)
                 points = np.zeros((1, height, width, 3), dtype=np.float32)
                 print 'start video {}'.format(video_index)
 
@@ -357,13 +361,24 @@ def test_net(sess, net, imdb, weights_filename, rig_filename, is_kfusion):
             im = rgba
 
         # read depth image
-        im_depth = pad_im(cv2.imread(imdb.depth_path_at(i), cv2.IMREAD_UNCHANGED), 16)
+        im_depth = pad_im(cv2.imread(roidb[i]['depth'], cv2.IMREAD_UNCHANGED), 16)
 
         # load meta data
-        meta_data = scipy.io.loadmat(imdb.metadata_path_at(i))
+        meta_data = scipy.io.loadmat(roidb[i]['meta_data'])
 
+
+        yolo_file=open(roidb[i]['yolo'], 'r')
+        #print("yoloooooooooooo",roidb[i]['yolo'])
+        yolo_list=[]
+        yolo_list_list = []
+
+        for line in yolo_file:
+            #print(len(line))
+            yolo_list.append(line.rstrip().lstrip().split())
+
+        yolo_list_list.append(yolo_list)
         # backprojection for the first frame
-        if not have_prediction:    
+        if not have_prediction:
             if is_kfusion:
                 # KF.set_voxel_grid(-3, -3, -3, 6, 6, 7)
                 KF.set_voxel_grid(voxelizer.min_x, voxelizer.min_y, voxelizer.min_z, voxelizer.max_x-voxelizer.min_x, voxelizer.max_y-voxelizer.min_y, voxelizer.max_z-voxelizer.min_z)
@@ -396,7 +411,7 @@ def test_net(sess, net, imdb, weights_filename, rig_filename, is_kfusion):
         pose_live2world = se3_inverse(pose_world2live)
 
         _t['im_segment'].tic()
-        labels, probs, state, weights, points = im_segment(sess, net, im, im_depth, state, weights, points, meta_data, voxelizer, pose_world2live, pose_live2world)
+        labels, probs, state, weights, points = im_segment(sess, net, im, im_depth, yolo_list_list, state, weights, points, meta_data, voxelizer, pose_world2live, pose_live2world)
         _t['im_segment'].toc()
         # time.sleep(3)
 
@@ -501,7 +516,7 @@ def _extract_vertmap(im_label, vertex_pred, extents, num_classes):
 
     return vertmap
     #return _unscale_vertmap(vertmap, im_label, extents, num_classes)
-    #return vertmap, centermap  
+    #return vertmap, centermap
 
 
 def scale_vertmap(vertmap):
@@ -621,7 +636,7 @@ def vis_segmentations_vertmaps(im, im_depth, im_labels, im_labels_gt, colors, ve
                     x2d = np.matmul(intrinsic_matrix, np.matmul(RT, x3d))
                     x2d[0, :] = np.divide(x2d[0, :], x2d[2, :])
                     x2d[1, :] = np.divide(x2d[1, :], x2d[2, :])
-                
+
                     plt.plot(x2d[0, :], x2d[1, :], '.', color=np.divide(colors[i], 255.0), alpha=0.05)
         ax.set_title('projection')
         ax.invert_yaxis()
@@ -751,7 +766,7 @@ def test_net_single_frame(sess, net, imdb, weights_filename, rig_filename, is_kf
         # build the label image
         im_label = imdb.labels_to_image(im, labels)
 
-        if not have_prediction:    
+        if not have_prediction:
             if is_kfusion:
                 KF.set_voxel_grid(-3, -3, -3, 6, 6, 7)
 
